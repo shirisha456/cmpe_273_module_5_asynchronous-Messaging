@@ -1,0 +1,5 @@
+.venv/
+__pycache__/
+*.pyc
+processed_events.txt
+.DS_Store
