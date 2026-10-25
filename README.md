@@ -147,13 +147,17 @@ In `--crash-after-processing-once` mode, the worker calls `os._exit(1)` right af
 
 ## 8. Successful Message Processing Evidence
 
-See the Demo 1 screenshots in [section 9](#9-competing-consumers-evidence). Each event moves through the same steps:
+Each event moves through the same steps:
 
 ```text
 published (producer) → received → processing → processed → acked (worker)
 ```
 
-The `acked` line always comes **after** `processed`, so the ACK is sent only once processing has finished.
+**Terminal 1: worker-1 successfully processing orders**
+
+![Terminal 1 - successful processing](screenshots/demo1_terminal1_worker1.png)
+
+For each order, worker-1 logs `received`, then `processing` (with `item_id` and `quantity`), then `processed`, and finally `acked`. The `acked` line always comes **after** `processed`, so the ACK is sent only once processing has finished. The matching `published` lines are in the producer screenshot in [section 9](#9-competing-consumers-evidence).
 
 ## 9. Competing Consumers Evidence
 
