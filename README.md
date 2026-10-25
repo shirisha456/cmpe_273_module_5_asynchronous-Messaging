@@ -147,20 +147,13 @@ In `--crash-after-processing-once` mode, the worker calls `os._exit(1)` right af
 
 ## 8. Successful Message Processing Evidence
 
-This is real output from a test run. One message goes from `published` → `received` → `processing` → `processed` → `acked`:
+See the Demo 1 screenshots in [section 9](#9-competing-consumers-evidence). Each event moves through the same steps:
 
 ```text
-producer event=published event_id=event-629ac54a-89a2-48ef-827e-21af8f4e22cc order_id=order-8e6afa7d-f691-4505-9efe-8d9267838c93 body={"event_id": "event-629ac54a-89a2-48ef-827e-21af8f4e22cc", "order_id": "order-8e6afa7d-f691-4505-9efe-8d9267838c93", "item_id": "sku-807", "quantity": 3}
+published (producer) → received → processing → processed → acked (worker)
 ```
 
-```text
-21:41:24.135 worker=worker-2 event=received event_id=event-629ac54a-89a2-48ef-827e-21af8f4e22cc order_id=order-8e6afa7d-f691-4505-9efe-8d9267838c93 redelivered=False delivery_tag=1
-21:41:24.641 worker=worker-2 event=processing event_id=event-629ac54a-89a2-48ef-827e-21af8f4e22cc order_id=order-8e6afa7d-f691-4505-9efe-8d9267838c93 item_id=sku-807 quantity=3
-21:41:25.142 worker=worker-2 event=processed event_id=event-629ac54a-89a2-48ef-827e-21af8f4e22cc order_id=order-8e6afa7d-f691-4505-9efe-8d9267838c93 recorded_in=processed_events.txt
-21:41:25.143 worker=worker-2 event=acked event_id=event-629ac54a-89a2-48ef-827e-21af8f4e22cc delivery_tag=1
-```
-
-The `acked` line always comes after `processed`. The ACK is sent only once processing has finished.
+The `acked` line always comes **after** `processed`, so the ACK is sent only once processing has finished.
 
 ## 9. Competing Consumers Evidence
 
@@ -172,8 +165,6 @@ python worker.py --name worker-1           # Terminal 1
 python worker.py --name worker-2           # Terminal 2
 python producer.py --count 6               # Terminal 3
 ```
-
-### Screenshots
 
 **Terminal 1: worker-1**
 
@@ -187,7 +178,7 @@ python producer.py --count 6               # Terminal 3
 
 ![Terminal 3 - producer](screenshots/demo1_terminal3_producer.png)
 
-**Who handled which event (from the screenshots above):**
+**Who handled which event:**
 
 | Published event_id (prefix) | Handled by |
 |---|---|
@@ -198,78 +189,12 @@ python producer.py --count 6               # Terminal 3
 | `event-9e5757be…` | worker-2 (Terminal 2) |
 | `event-347c8d93…` | worker-1 (Terminal 1) |
 
-All 6 published events were handled, 3 by each worker. No event appears in both workers' output.
-
-### Text log output
-
-The text logs below come from a separate verification run, so their UUIDs differ from the screenshots.
-
-**Producer (Terminal 3)**, real output:
-
-```text
-producer event=published event_id=event-629ac54a-89a2-48ef-827e-21af8f4e22cc order_id=order-8e6afa7d-f691-4505-9efe-8d9267838c93 body={"event_id": "event-629ac54a-89a2-48ef-827e-21af8f4e22cc", "order_id": "order-8e6afa7d-f691-4505-9efe-8d9267838c93", "item_id": "sku-807", "quantity": 3}
-producer event=published event_id=event-b199d2af-41be-4929-b98f-7aa3b56e952e order_id=order-529bfa99-9080-443e-9039-9204ae5f4283 body={"event_id": "event-b199d2af-41be-4929-b98f-7aa3b56e952e", "order_id": "order-529bfa99-9080-443e-9039-9204ae5f4283", "item_id": "sku-935", "quantity": 4}
-producer event=published event_id=event-e6e7d1d3-62ee-4740-9beb-515034b7b7bf order_id=order-5a35959d-1ab4-442b-a4bf-e6ed087ab6fd body={"event_id": "event-e6e7d1d3-62ee-4740-9beb-515034b7b7bf", "order_id": "order-5a35959d-1ab4-442b-a4bf-e6ed087ab6fd", "item_id": "sku-863", "quantity": 2}
-producer event=published event_id=event-971df420-e56f-48ea-9108-4b6ec49c8bca order_id=order-b9e007df-bbb2-478c-8882-5a470c8cdd37 body={"event_id": "event-971df420-e56f-48ea-9108-4b6ec49c8bca", "order_id": "order-b9e007df-bbb2-478c-8882-5a470c8cdd37", "item_id": "sku-880", "quantity": 4}
-producer event=published event_id=event-430ccf36-1d44-4acf-a049-ac1471a40241 order_id=order-473c7881-a50f-4213-8c93-75d76525cd6c body={"event_id": "event-430ccf36-1d44-4acf-a049-ac1471a40241", "order_id": "order-473c7881-a50f-4213-8c93-75d76525cd6c", "item_id": "sku-944", "quantity": 2}
-producer event=published event_id=event-8daf9514-9701-4a74-8315-51d6dd936f68 order_id=order-f7bcf50a-746d-4b03-b82a-9ead3e9ca64b body={"event_id": "event-8daf9514-9701-4a74-8315-51d6dd936f68", "order_id": "order-f7bcf50a-746d-4b03-b82a-9ead3e9ca64b", "item_id": "sku-943", "quantity": 3}
-producer event=done published=6 queue=orders
-```
-
-**worker-1 (Terminal 1)**, real output:
-
-```text
-21:41:22.124 worker=worker-1 event=started queue=orders host=localhost mode=normal
-21:41:24.135 worker=worker-1 event=received event_id=event-b199d2af-41be-4929-b98f-7aa3b56e952e order_id=order-529bfa99-9080-443e-9039-9204ae5f4283 redelivered=False delivery_tag=1
-21:41:24.135 worker=worker-1 event=processing event_id=event-b199d2af-41be-4929-b98f-7aa3b56e952e order_id=order-529bfa99-9080-443e-9039-9204ae5f4283 item_id=sku-935 quantity=4
-21:41:24.641 worker=worker-1 event=processed event_id=event-b199d2af-41be-4929-b98f-7aa3b56e952e order_id=order-529bfa99-9080-443e-9039-9204ae5f4283 recorded_in=processed_events.txt
-21:41:24.641 worker=worker-1 event=acked event_id=event-b199d2af-41be-4929-b98f-7aa3b56e952e delivery_tag=1
-21:41:24.644 worker=worker-1 event=received event_id=event-e6e7d1d3-62ee-4740-9beb-515034b7b7bf order_id=order-5a35959d-1ab4-442b-a4bf-e6ed087ab6fd redelivered=False delivery_tag=2
-21:41:25.143 worker=worker-1 event=processing event_id=event-e6e7d1d3-62ee-4740-9beb-515034b7b7bf order_id=order-5a35959d-1ab4-442b-a4bf-e6ed087ab6fd item_id=sku-863 quantity=2
-21:41:25.648 worker=worker-1 event=processed event_id=event-e6e7d1d3-62ee-4740-9beb-515034b7b7bf order_id=order-5a35959d-1ab4-442b-a4bf-e6ed087ab6fd recorded_in=processed_events.txt
-21:41:25.649 worker=worker-1 event=acked event_id=event-e6e7d1d3-62ee-4740-9beb-515034b7b7bf delivery_tag=2
-21:41:25.650 worker=worker-1 event=received event_id=event-430ccf36-1d44-4acf-a049-ac1471a40241 order_id=order-473c7881-a50f-4213-8c93-75d76525cd6c redelivered=False delivery_tag=3
-21:41:26.154 worker=worker-1 event=processing event_id=event-430ccf36-1d44-4acf-a049-ac1471a40241 order_id=order-473c7881-a50f-4213-8c93-75d76525cd6c item_id=sku-944 quantity=2
-21:41:26.657 worker=worker-1 event=processed event_id=event-430ccf36-1d44-4acf-a049-ac1471a40241 order_id=order-473c7881-a50f-4213-8c93-75d76525cd6c recorded_in=processed_events.txt
-21:41:26.657 worker=worker-1 event=acked event_id=event-430ccf36-1d44-4acf-a049-ac1471a40241 delivery_tag=3
-```
-
-**worker-2 (Terminal 2)**, real output:
-
-```text
-21:41:22.124 worker=worker-2 event=started queue=orders host=localhost mode=normal
-21:41:24.135 worker=worker-2 event=received event_id=event-629ac54a-89a2-48ef-827e-21af8f4e22cc order_id=order-8e6afa7d-f691-4505-9efe-8d9267838c93 redelivered=False delivery_tag=1
-21:41:24.641 worker=worker-2 event=processing event_id=event-629ac54a-89a2-48ef-827e-21af8f4e22cc order_id=order-8e6afa7d-f691-4505-9efe-8d9267838c93 item_id=sku-807 quantity=3
-21:41:25.142 worker=worker-2 event=processed event_id=event-629ac54a-89a2-48ef-827e-21af8f4e22cc order_id=order-8e6afa7d-f691-4505-9efe-8d9267838c93 recorded_in=processed_events.txt
-21:41:25.143 worker=worker-2 event=acked event_id=event-629ac54a-89a2-48ef-827e-21af8f4e22cc delivery_tag=1
-21:41:25.145 worker=worker-2 event=received event_id=event-971df420-e56f-48ea-9108-4b6ec49c8bca order_id=order-b9e007df-bbb2-478c-8882-5a470c8cdd37 redelivered=False delivery_tag=2
-21:41:25.648 worker=worker-2 event=processing event_id=event-971df420-e56f-48ea-9108-4b6ec49c8bca order_id=order-b9e007df-bbb2-478c-8882-5a470c8cdd37 item_id=sku-880 quantity=4
-21:41:26.154 worker=worker-2 event=processed event_id=event-971df420-e56f-48ea-9108-4b6ec49c8bca order_id=order-b9e007df-bbb2-478c-8882-5a470c8cdd37 recorded_in=processed_events.txt
-21:41:26.154 worker=worker-2 event=acked event_id=event-971df420-e56f-48ea-9108-4b6ec49c8bca delivery_tag=2
-21:41:26.156 worker=worker-2 event=received event_id=event-8daf9514-9701-4a74-8315-51d6dd936f68 order_id=order-f7bcf50a-746d-4b03-b82a-9ead3e9ca64b redelivered=False delivery_tag=3
-21:41:26.657 worker=worker-2 event=processing event_id=event-8daf9514-9701-4a74-8315-51d6dd936f68 order_id=order-f7bcf50a-746d-4b03-b82a-9ead3e9ca64b item_id=sku-943 quantity=3
-21:41:27.158 worker=worker-2 event=processed event_id=event-8daf9514-9701-4a74-8315-51d6dd936f68 order_id=order-f7bcf50a-746d-4b03-b82a-9ead3e9ca64b recorded_in=processed_events.txt
-21:41:27.159 worker=worker-2 event=acked event_id=event-8daf9514-9701-4a74-8315-51d6dd936f68 delivery_tag=3
-```
-
-**Summary of who handled which event:**
-
-| # | event_id (prefix) | Handled by |
-|---|-------------------|------------|
-| 1 | `event-629ac54a…` | worker-2 |
-| 2 | `event-b199d2af…` | worker-1 |
-| 3 | `event-e6e7d1d3…` | worker-1 |
-| 4 | `event-971df420…` | worker-2 |
-| 5 | `event-430ccf36…` | worker-1 |
-| 6 | `event-8daf9514…` | worker-2 |
-
 - One queue (`orders`) with two separate worker processes consuming from it.
 - Both workers received work: 3 messages each.
-- No `event_id` appears in both workers' logs, so each message went to exactly one consumer.
-- The queue was empty afterwards: `orders  messages_ready=0  messages_unacknowledged=0  consumers=2`.
-- RabbitMQ does not promise strict alternation. The split was even here, but the exact assignment can differ between runs.
+- No `event_id` appears in both workers' output, so each message went to exactly one consumer.
+- RabbitMQ does not promise strict alternation. The split was even here, but it can differ between runs.
 
-> Note: the two workers share one file lock around "check → process → record". This prevents a race on the same `event_id`, but it also means business actions don't overlap in time (visible in the timestamps above). That is an acceptable simplification for this lab. A production system would use a database with a unique constraint or per-key locking instead.
+> Note: the two workers share one file lock around "check → process → record". This prevents a race on the same `event_id`, but it also means business actions don't overlap in time. That is an acceptable simplification for this lab. A production system would use a database with a unique constraint instead.
 
 ## 10. Failure and Redelivery Evidence
 
@@ -287,14 +212,12 @@ python worker.py --name worker-1 --crash-after-processing-once
 # Step 3 – Terminal 3: publish exactly one known message
 python producer.py --count 1 --event-id redelivery-demo-001
 
-# (optional) inspect the queue: the message is back in "ready", not lost
+# Step 4 – Terminal 3: inspect the queue (the message is back in "ready", not lost)
 docker exec cmpe273-rabbitmq rabbitmqctl list_queues name messages_ready messages_unacknowledged consumers
 
-# Step 4 – Terminal 2: start worker-2 normally
+# Step 5 – Terminal 2: start worker-2 normally
 python worker.py --name worker-2
 ```
-
-### Screenshots
 
 **Terminal 1: worker-1 (crash mode, stops before ACK)**
 
@@ -313,82 +236,7 @@ python worker.py --name worker-2
 1. **Terminal 1:** worker-1 processed `redelivery-demo-001` (`order-a9cceeb8…`), recorded it, then logged `intentionally_crashing_before_ack` and exited. There is no `acked` line.
 2. **Terminal 3:** after worker-1 died, the queue shows `orders 1 0 0`. The unacknowledged message went back to *ready* and was not lost, and no consumers were connected.
 3. **Terminal 2:** worker-2 received the **same** `event_id` and `order_id` with `redelivered=True`. It logged `duplicate_detected action=business_action_skipped`, so the business action was not repeated, and then `acked` the message.
-
-### Text log output
-
-The text logs below come from a separate verification run, so their timestamps and UUIDs differ from the screenshots.
-
-**Producer**, real output:
-
-```text
-producer event=published event_id=redelivery-demo-001 order_id=order-7b871363-0eab-4d0c-8831-3e5295be466c body={"event_id": "redelivery-demo-001", "order_id": "order-7b871363-0eab-4d0c-8831-3e5295be466c", "item_id": "sku-657", "quantity": 1}
-producer event=done published=1 queue=orders
-```
-
-**Queue while worker-1 holds the message.** It has been delivered but not ACKed:
-
-```text
-name	messages_ready	messages_unacknowledged	consumers
-orders	0	1	1
-```
-
-**worker-1 (crash mode)**, real output. It receives, processes, and records the event, then dies **before ACK** (process exit code 1). There is no `acked` line:
-
-```text
-21:41:56.974 worker=worker-1 event=started queue=orders host=localhost mode=crash-after-processing-once
-21:41:58.999 worker=worker-1 event=received event_id=redelivery-demo-001 order_id=order-7b871363-0eab-4d0c-8831-3e5295be466c redelivered=False delivery_tag=1
-21:41:58.999 worker=worker-1 event=processing event_id=redelivery-demo-001 order_id=order-7b871363-0eab-4d0c-8831-3e5295be466c item_id=sku-657 quantity=1
-21:41:59.505 worker=worker-1 event=processed event_id=redelivery-demo-001 order_id=order-7b871363-0eab-4d0c-8831-3e5295be466c recorded_in=processed_events.txt
-21:41:59.505 worker=worker-1 event=intentionally_crashing_before_ack event_id=redelivery-demo-001 delivery_tag=1
-```
-
-**Queue after worker-1 died.** The connection closed without an ACK, so RabbitMQ moved the message back to *ready*:
-
-```text
-name	messages_ready	messages_unacknowledged	consumers
-orders	1	0	0
-```
-
-`processed_events.txt` at this point:
-
-```text
-redelivery-demo-001
-```
-
-**worker-2 (normal)**, real output. It gets the **same `event_id`**, RabbitMQ marks it `redelivered=True`, and worker-2 skips the business action and ACKs:
-
-```text
-21:41:59.810 worker=worker-2 event=started queue=orders host=localhost mode=normal
-21:41:59.812 worker=worker-2 event=received event_id=redelivery-demo-001 order_id=order-7b871363-0eab-4d0c-8831-3e5295be466c redelivered=True delivery_tag=1
-21:41:59.812 worker=worker-2 event=duplicate_detected event_id=redelivery-demo-001 action=business_action_skipped
-21:41:59.812 worker=worker-2 event=acked event_id=redelivery-demo-001 delivery_tag=1
-```
-
-**Queue afterwards.** The message was ACKed and removed:
-
-```text
-name	messages_ready	messages_unacknowledged	consumers
-orders	0	0	1
-```
-
-**The system keeps running.** A new order published afterwards was processed normally by worker-2:
-
-```text
-21:42:03.093 worker=worker-2 event=received event_id=event-c86ebbf6-4925-4daa-b4e9-43b46e42e14b order_id=order-e4fe15ed-4bd1-407a-8cc6-585006770d9c redelivered=False delivery_tag=2
-21:42:03.093 worker=worker-2 event=processing event_id=event-c86ebbf6-4925-4daa-b4e9-43b46e42e14b order_id=order-e4fe15ed-4bd1-407a-8cc6-585006770d9c item_id=sku-893 quantity=3
-21:42:03.599 worker=worker-2 event=processed event_id=event-c86ebbf6-4925-4daa-b4e9-43b46e42e14b order_id=order-e4fe15ed-4bd1-407a-8cc6-585006770d9c recorded_in=processed_events.txt
-21:42:03.600 worker=worker-2 event=acked event_id=event-c86ebbf6-4925-4daa-b4e9-43b46e42e14b delivery_tag=2
-```
-
-What this shows:
-
-1. worker-1 received `redelivery-demo-001`.
-2. worker-1 processed it and recorded the `event_id`.
-3. worker-1 stopped before sending the ACK.
-4. The message stayed unacknowledged (`messages_unacknowledged=1`), then went back to ready (`messages_ready=1`) when the connection dropped.
-5. RabbitMQ redelivered it (`redelivered=True`).
-6. worker-2 received the **same** `event_id` (and the same `order_id`).
-7. worker-2 did **not** repeat the business action, ACKed the message, and kept processing new orders.
+4. RabbitMQ and worker-2 kept running afterwards.
 
 ## 11. Duplicate Handling Evidence
 
@@ -399,8 +247,6 @@ rm -f processed_events.txt                 # test reset only
 python worker.py --name worker-1           # Terminal 1
 python producer.py --duplicate-demo        # Terminal 3
 ```
-
-### Screenshots
 
 **Terminal 1: worker-1**
 
@@ -415,38 +261,6 @@ python producer.py --duplicate-demo        # Terminal 3
 1. **Terminal 3:** the producer published the identical message twice (`event_id=duplicate-demo-001`, same `order_id=order-32287018…`), ending with `published=2`.
 2. **Terminal 1, first copy (`delivery_tag=1`):** `received` → `processing` → `processed` → `acked`. The business action ran.
 3. **Terminal 1, second copy (`delivery_tag=2`):** `received` → `duplicate_detected action=business_action_skipped` → `acked`. There is **no `processing` line**, so the business action was not performed twice. The duplicate was still ACKed, so it does not stay in the queue.
-
-### Text log output
-
-The text logs below come from a separate verification run, so their timestamps and UUIDs differ from the screenshots.
-
-**Producer**, real output. The identical message is published twice:
-
-```text
-producer event=published event_id=duplicate-demo-001 order_id=order-722319e2-b2ba-44df-85db-3f1627717efb body={"event_id": "duplicate-demo-001", "order_id": "order-722319e2-b2ba-44df-85db-3f1627717efb", "item_id": "sku-224", "quantity": 2}
-producer event=published event_id=duplicate-demo-001 order_id=order-722319e2-b2ba-44df-85db-3f1627717efb body={"event_id": "duplicate-demo-001", "order_id": "order-722319e2-b2ba-44df-85db-3f1627717efb", "item_id": "sku-224", "quantity": 2}
-producer event=done published=2 queue=orders
-```
-
-**worker-1**, real output:
-
-```text
-21:42:14.550 worker=worker-1 event=started queue=orders host=localhost mode=normal
-21:42:16.565 worker=worker-1 event=received event_id=duplicate-demo-001 order_id=order-722319e2-b2ba-44df-85db-3f1627717efb redelivered=False delivery_tag=1
-21:42:16.566 worker=worker-1 event=processing event_id=duplicate-demo-001 order_id=order-722319e2-b2ba-44df-85db-3f1627717efb item_id=sku-224 quantity=2
-21:42:17.071 worker=worker-1 event=processed event_id=duplicate-demo-001 order_id=order-722319e2-b2ba-44df-85db-3f1627717efb recorded_in=processed_events.txt
-21:42:17.072 worker=worker-1 event=acked event_id=duplicate-demo-001 delivery_tag=1
-21:42:17.075 worker=worker-1 event=received event_id=duplicate-demo-001 order_id=order-722319e2-b2ba-44df-85db-3f1627717efb redelivered=False delivery_tag=2
-21:42:17.075 worker=worker-1 event=duplicate_detected event_id=duplicate-demo-001 action=business_action_skipped
-21:42:17.076 worker=worker-1 event=acked event_id=duplicate-demo-001 delivery_tag=2
-21:42:18.869 worker=worker-1 event=stopping
-```
-
-- First delivery (`delivery_tag=1`): `processing` → `processed` → `acked`.
-- Second delivery of the same `event_id` (`delivery_tag=2`): `duplicate_detected action=business_action_skipped` → `acked`. There is **no `processing` line**, so the business action ran only once.
-- The duplicate was ACKed after it was identified, and the queue ended empty (`messages_ready=0 messages_unacknowledged=0`).
-- `processed_events.txt` contains `duplicate-demo-001` exactly once.
-- The last line (`event=stopping`) shows a clean shutdown with Ctrl+C.
 
 ## 12. Reflection
 
